@@ -470,6 +470,18 @@
   }
   function persist(h) { localStorage.setItem('tracker_history', JSON.stringify(h)); }
 
+  function saveCurrentState() {
+    localStorage.setItem('tracker_current', JSON.stringify({
+      stamina: state.stamina, spirit: state.spirit, damage: state.damage
+    }));
+  }
+  function restoreCurrentState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('tracker_current') || 'null');
+      if (saved) { state.stamina = saved.stamina; state.spirit = saved.spirit; state.damage = saved.damage; }
+    } catch { /* start from zero if corrupt */ }
+  }
+
   /* Save snapshot */
   function saveState() {
     const now = new Date();
@@ -481,6 +493,7 @@
     const h = loadHistory();
     h.unshift(rec);
     persist(h);
+    saveCurrentState();
     renderTable(h);
 
     const btn = $('saveBtn');
@@ -540,6 +553,7 @@
     const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
     $('exportFrom').value = fmt(ago);
     $('exportTo').value   = fmt(today);
+    restoreCurrentState();
     render();
     renderTable(loadHistory());
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
