@@ -1,5 +1,5 @@
 // Built: 2026-05-03T00:00:00Z
-const CACHE = 'tracker-2026-05-03T00:00:00Z';
+const CACHE = 'tracker-2026-05-04T00:00:00Z';
 const ASSETS = [
   '.', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'
 ];

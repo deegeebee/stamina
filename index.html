@@ -331,6 +331,29 @@
       line-height: 1.7;
     }
 
+    /* ── DELETE BUTTON ── */
+    .btn-del {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1.5px solid var(--line);
+      background: transparent;
+      color: var(--sub);
+      font-size: 0.85rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
+      touch-action: manipulation;
+    }
+    .btn-del:active { transform: scale(0.84); }
+    .btn-del:hover  { background: rgba(240,82,82,.15); border-color: var(--damage); color: var(--damage); }
+
+    thead th.col-del { color: var(--sub); width: 40px; text-align: center; }
+    tbody td.col-del  { text-align: center; padding: 6px 8px; }
+
     /* ── TOAST ── */
     .toast {
       position: fixed;
@@ -425,6 +448,7 @@
           <th class="col-stamina">STM</th>
           <th class="col-spirit">SPR</th>
           <th class="col-damage">DMG</th>
+          <th class="col-del"></th>
         </tr>
       </thead>
       <tbody id="historyBody"></tbody>
@@ -504,16 +528,31 @@
     toast('Saved ✓');
   }
 
-  /* Render history table */
   function renderTable(h) {
     const tbody = $('historyBody');
     if (!h.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No saves yet.<br>Adjust values and press Save State.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No saves yet.<br>Adjust values and press Save State.</td></tr>';
       return;
     }
-    tbody.innerHTML = h.map(r =>
-      `<tr><td>${r.date}</td><td>${r.time}</td><td>${r.stamina}</td><td>${r.spirit}</td><td>${r.damage}</td></tr>`
+    tbody.innerHTML = h.map((r, i) =>
+      `<tr>
+        <td>${r.date}</td>
+        <td>${r.time}</td>
+        <td>${r.stamina}</td>
+        <td>${r.spirit}</td>
+        <td>${r.damage}</td>
+        <td class="col-del"><button class="btn-del" onclick="deleteEntry(${i})" title="Delete entry">✕</button></td>
+      </tr>`
     ).join('');
+  }
+
+  /* Delete single history entry */
+  function deleteEntry(index) {
+    const h = loadHistory();
+    h.splice(index, 1);
+    persist(h);
+    renderTable(h);
+    toast('Entry deleted');
   }
 
   /* CSV export */
