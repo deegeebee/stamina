@@ -331,15 +331,62 @@
       line-height: 1.7;
     }
 
-    /* ── DELETE BUTTON ── */
-    .btn-del {
+    /* ── REMARK INPUT ── */
+    .remark-row {
+      padding: 0 16px 18px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .remark-wrap {
+      width: 100%;
+      max-width: 360px;
+      position: relative;
+    }
+
+    .remark-textarea {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      padding: 12px 14px;
+      resize: none;
+      outline: none;
+      min-height: 44px;
+      max-height: 120px;
+      overflow-y: auto;
+      transition: border-color 0.15s;
+      color-scheme: dark;
+    }
+    .remark-textarea::placeholder { color: var(--sub); }
+    .remark-textarea:focus { border-color: var(--spirit); }
+
+    /* ── NOTE ROW (inline reveal) ── */
+    .note-row td {
+      padding: 0 13px 10px;
+      white-space: normal;
+      color: var(--sub);
+      font-size: 0.74rem;
+      font-style: italic;
+      line-height: 1.5;
+      border-bottom: none;
+    }
+    .note-row { display: none; }
+    .note-row.visible { display: table-row; }
+
+    /* ── CHAT BUBBLE BUTTON ── */
+    .btn-note {
       width: 28px;
       height: 28px;
       border-radius: 7px;
       border: 1.5px solid var(--line);
       background: transparent;
       color: var(--sub);
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       line-height: 1;
       cursor: pointer;
       display: inline-flex;
@@ -348,11 +395,36 @@
       transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s;
       touch-action: manipulation;
     }
-    .btn-del:active { transform: scale(0.84); }
-    .btn-del:hover  { background: rgba(240,82,82,.15); border-color: var(--damage); color: var(--damage); }
+    .btn-note:active  { transform: scale(0.84); }
+    .btn-note:hover,
+    .btn-note.active  { background: rgba(139,124,246,.15); border-color: var(--spirit); color: var(--spirit); }
 
-    thead th.col-del { color: var(--sub); width: 40px; text-align: center; }
-    tbody td.col-del  { text-align: center; padding: 6px 8px; }
+    thead th.col-note { width: 44px; text-align: center; }
+    tbody td.col-note { text-align: center; padding: 6px 8px; }
+
+    /* ── DELETE BUTTON ── */
+    .btn-del {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1.5px solid rgba(240,82,82,.35);
+      background: rgba(240,82,82,.07);
+      color: var(--damage);
+      font-size: 0.85rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, border-color 0.12s, transform 0.1s;
+      touch-action: manipulation;
+    }
+    .btn-del:active { transform: scale(0.84); }
+    .btn-del:hover  { background: rgba(240,82,82,.25); border-color: var(--damage); }
+
+    /* faint left border separates delete from the note icon */
+    thead th.col-del { width: 48px; text-align: center; border-left: 1px solid var(--line); }
+    tbody td.col-del { text-align: center; padding: 6px 10px; border-left: 1px solid var(--line); }
 
     /* ── TOAST ── */
     .toast {
@@ -423,6 +495,13 @@
 
 </div>
 
+<div class="remark-row">
+  <div class="remark-wrap">
+    <textarea class="remark-textarea" id="remarkInput" rows="1"
+      placeholder="Optional note — why did you lose points? (clears after save)"></textarea>
+  </div>
+</div>
+
 <div class="save-row">
   <button class="btn-save" id="saveBtn" onclick="saveState()">Save State</button>
 </div>
@@ -448,6 +527,7 @@
           <th class="col-stamina">STM</th>
           <th class="col-spirit">SPR</th>
           <th class="col-damage">DMG</th>
+          <th class="col-note"></th>
           <th class="col-del"></th>
         </tr>
       </thead>
@@ -509,16 +589,19 @@
   /* Save snapshot */
   function saveState() {
     const now = new Date();
+    const remark = $('remarkInput').value.trim();
     const rec = {
       date:    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
       time:    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
-      stamina: state.stamina, spirit: state.spirit, damage: state.damage
+      stamina: state.stamina, spirit: state.spirit, damage: state.damage,
+      note:    remark
     };
     const h = loadHistory();
     h.unshift(rec);
     persist(h);
     saveCurrentState();
     renderTable(h);
+    $('remarkInput').value = '';
 
     const btn = $('saveBtn');
     btn.classList.remove('saved');
@@ -531,19 +614,39 @@
   function renderTable(h) {
     const tbody = $('historyBody');
     if (!h.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No saves yet.<br>Adjust values and press Save State.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No saves yet.<br>Adjust values and press Save State.</td></tr>';
       return;
     }
-    tbody.innerHTML = h.map((r, i) =>
-      `<tr>
+    tbody.innerHTML = h.map((r, i) => {
+      const hasNote = r.note && r.note.trim();
+      const noteBtn = hasNote
+        ? `<button class="btn-note" onclick="toggleNote(${i})" title="Show note" id="notebtn-${i}">💬</button>`
+        : '';
+      const noteRow = hasNote
+        ? `<tr class="note-row" id="noterow-${i}"><td colspan="7">💬 ${escHtml(r.note)}</td></tr>`
+        : '';
+      return `<tr>
         <td>${r.date}</td>
         <td>${r.time}</td>
         <td>${r.stamina}</td>
         <td>${r.spirit}</td>
         <td>${r.damage}</td>
+        <td class="col-note">${noteBtn}</td>
         <td class="col-del"><button class="btn-del" onclick="deleteEntry(${i})" title="Delete entry">✕</button></td>
-      </tr>`
-    ).join('');
+      </tr>${noteRow}`;
+    }).join('');
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toggleNote(i) {
+    const row = $('noterow-' + i);
+    const btn = $('notebtn-' + i);
+    if (!row) return;
+    const open = row.classList.toggle('visible');
+    btn.classList.toggle('active', open);
   }
 
   /* Delete single history entry */
@@ -564,8 +667,11 @@
     if (to) h = h.filter(r => r.date <= to);
     if (!h.length) { toast('No records in range.'); return; }
 
-    const csv = ['Date,Time,Stamina,Spirit,Damage',
-      ...h.map(r => `${r.date},${r.time},${r.stamina},${r.spirit},${r.damage}`)
+    const csv = ['Date,Time,Stamina,Spirit,Damage,Note',
+      ...h.map(r => {
+        const note = (r.note || '').replace(/"/g, '""');
+        return `${r.date},${r.time},${r.stamina},${r.spirit},${r.damage},"${note}"`;
+      })
     ].join('\n');
 
     const a = Object.assign(document.createElement('a'), {
